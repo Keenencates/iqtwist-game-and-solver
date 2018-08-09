@@ -1,28 +1,61 @@
 #lang racket
+(require 2htdp/image)
 
-(define (print-seperator cols)
-  (pretty-print (string-join (build-list cols (lambda (x) "-")) "")))
+;graphical constants
+(define ROWS 4)
+(define COLS 8)
+(define CELL-WIDTH 30)
+(define CELL-HEIGHT 30)
+(define CELL-CENTER-X (/ CELL-WIDTH 2))
+(define CELL-CENTER-Y (/ CELL-HEIGHT 2))
+(define INNER-OFFSET 7)
+(define INNER-RADIUS (- (/ CELL-WIDTH 2) INNER-OFFSET))
+(define BOARD-WIDTH (* CELL-WIDTH COLS)) 
+(define BOARD-HEIGHT (* CELL-HEIGHT ROWS))
 
-(define (make-board-row cols)
-  (build-list cols (lambda (x) "o")))
+;graphical cell-types
+;;; TODO change circle to ellipsoid
+(define EMPTY-CELL (overlay (circle INNER-RADIUS
+                                    "outline"
+                                    "white")
+                            (rectangle CELL-WIDTH
+                                       CELL-HEIGHT
+                                       "solid"
+                                       "black")))
 
-(define (make-board rows cols)
-  (build-list rows (lambda (x)
-                     (make-board-row cols))))
+(define (make-peg-cell color) (overlay (circle INNER-RADIUS
+                                               "solid"
+                                               color)
+                                  (rectangle CELL-WIDTH
+                                             CELL-HEIGHT
+                                             "solid"
+                                             "black")))
 
-(define (print-board-row row)
-  (pretty-print
-   (string-join row " ")))
+;graphical board
+(define EMPTY-SCENE (empty-scene BOARD-WIDTH BOARD-HEIGHT))
+(define EMPTY-CELL-BOARD-ROW (apply beside (build-list COLS (const EMPTY-CELL))))
+(define EMPTY-CELL-BOARD (apply above (build-list ROWS (const EMPTY-CELL-BOARD-ROW))))
 
-(define (print-board board)
-  (for-each print-board-row board))
+(define CELL-TABLE (hash "e" EMPTY-CELL
+                         "rp" (make-peg-cell "red")
+                         "gp" (make-peg-cell "green")
+                         "bp" (make-peg-cell "blue")
+                         "yp" (make-peg-cell "yellow")))
 
-(define (make-square-piece mark)
-  (list (list 0 0 mark)
-        (list 0 1 mark)
-        (list 1 0 mark)
-        (list 1 1 mark)))
+(define (get-cell c)
+  (hash-ref CELL-TABLE c))
 
+(define (make-cell-board-row board-row)
+  (apply beside (map get-cell board-row)))
+
+(define (make-cell-board board)
+  (apply above (map make-cell-board-row board)))
+
+;non-graphical board
+(define EMPTY-BOARD (build-list ROWS (const (build-list COLS (const "e")))))
+
+;pieces and moves
+;TODO -> UPDATE TO NEW GRAPHICAL SYSTEM
 (define (place-single-piece board coord piece)
   (list-set board
             (+ (first coord)(first piece))
@@ -36,15 +69,3 @@
            (place-single-piece b coord p))
            board
            pieces))
-
-(print-board (make-board 4 8))
-(print-seperator 15)
-(print-board (place-single-piece (make-board 4 8) '(0 0) '(0 0 "x")))
-(print-seperator 15)
-(print-board (place-single-piece (make-board 4 8) '(0 0) '(1 1 "x")))
-(print-seperator 15)
-(print-board (place-single-piece (make-board 4 8) '(1 1) '(1 1 "x")))
-(print-seperator 15)
-(make-square-piece "x")
-(print-seperator 15)
-(print-board (place-multi-piece (make-board 4 8) '(0 0) (make-square-piece "x")))
