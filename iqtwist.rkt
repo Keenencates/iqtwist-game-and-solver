@@ -1,4 +1,5 @@
 #lang racket
+
 (require 2htdp/image)
 
 ;graphical constants
@@ -10,8 +11,11 @@
 (define CELL-CENTER-Y (/ CELL-HEIGHT 2))
 (define INNER-OFFSET 7)
 (define INNER-RADIUS (- (/ CELL-WIDTH 2) INNER-OFFSET))
+(define OUTER-OFFSET 2)
+(define OUTER-RADIUS (- (/ CELL-WIDTH 2) OUTER-OFFSET))
 (define BOARD-WIDTH (* CELL-WIDTH COLS)) 
 (define BOARD-HEIGHT (* CELL-HEIGHT ROWS))
+(define (THICK-PEN color) (make-pen color 4 "solid" "round" "round"))
 
 ;graphical cell-types
 ;;; TODO change circle to ellipsoid
@@ -30,6 +34,10 @@
                                              CELL-HEIGHT
                                              "solid"
                                              "black")))
+
+(define (make-open-cover-peg-cell color)
+  (overlay (circle OUTER-RADIUS "outline" (THICK-PEN color))
+           (make-peg-cell color)))
 
 ;graphical board
 (define EMPTY-SCENE (empty-scene BOARD-WIDTH BOARD-HEIGHT))
