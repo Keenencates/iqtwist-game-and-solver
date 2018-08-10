@@ -39,6 +39,13 @@
   (overlay (circle OUTER-RADIUS "outline" (THICK-PEN color))
            (make-peg-cell color)))
 
+(define (make-solid-cover-cell color)
+  (overlay (circle (+ OUTER-RADIUS 1) "solid" color) EMPTY-CELL))
+
+(define (make-open-cover-cell color)
+  (overlay (circle OUTER-RADIUS "outline" (THICK-PEN color))
+           EMPTY-CELL))
+
 ;graphical board
 (define EMPTY-SCENE (empty-scene BOARD-WIDTH BOARD-HEIGHT))
 (define EMPTY-CELL-BOARD-ROW (apply beside (build-list COLS (const EMPTY-CELL))))
@@ -48,7 +55,19 @@
                          "rp" (make-peg-cell "red")
                          "gp" (make-peg-cell "green")
                          "bp" (make-peg-cell "blue")
-                         "yp" (make-peg-cell "yellow")))
+                         "yp" (make-peg-cell "yellow")
+                         "ro" (make-open-cover-peg-cell "red")
+                         "go" (make-open-cover-peg-cell "green")
+                         "bo" (make-open-cover-peg-cell "blue")
+                         "yo" (make-open-cover-peg-cell "yellow")
+                         "rs" (make-solid-cover-cell "red")
+                         "gs" (make-solid-cover-cell "green")
+                         "bs" (make-solid-cover-cell "blue")
+                         "ys" (make-solid-cover-cell "yellow")
+                         "re" (make-open-cover-cell "red")
+                         "ge" (make-open-cover-cell "green")
+                         "be" (make-open-cover-cell "blue")
+                         "ye" (make-open-cover-cell "yellow")))
 
 (define (get-cell c)
   (hash-ref CELL-TABLE c))
@@ -62,8 +81,7 @@
 ;non-graphical board
 (define EMPTY-BOARD (build-list ROWS (const (build-list COLS (const "e")))))
 
-;pieces and moves
-;TODO -> UPDATE TO NEW GRAPHICAL SYSTEM
+;moves
 (define (place-single-piece board coord piece)
   (list-set board
             (+ (first coord)(first piece))
@@ -77,3 +95,15 @@
            (place-single-piece b coord p))
            board
            pieces))
+
+;pieces
+
+(define (single-piece-rotate-right piece) (list (second piece) (- (first piece)) (third piece)))
+(define (multi-piece-rotate-right piece) (map single-piece-rotate-right piece))
+(define red1 (list (list 0 0 "rs") (list 0 1 "re") (list 1 1 "rs") (list 2 1 "re")))
+
+(define red1-90 (multi-piece-rotate-right red1))
+(define move (place-multi-piece EMPTY-BOARD '(1 2) red1))
+(define move2 (place-multi-piece EMPTY-BOARD '(1 2) red1-90))
+(make-cell-board move)
+(make-cell-board move2)
