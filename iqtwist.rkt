@@ -1,6 +1,13 @@
 #lang racket
 
 (require 2htdp/image)
+(require 2htdp/universe)
+
+;TODO -- add unit testing
+;     -- move generation
+;     -- graphical piece bank
+;     -- grid coordinates
+;     -- mouse interaction
 
 ;graphical constants
 (define ROWS 4)
@@ -96,14 +103,62 @@
            board
            pieces))
 
-;pieces
+;move error checking
 
+;;A move is a pair, the location to place origin point,
+;;and a list of relative piece segments coords to piece
+;;origin.
+
+;;Need to check for errors when a move would be invalid.
+;;Piece construction should already be validated.
+(define LEFT-BOUNDARY 0)
+(define RIGHT-BOUNDARY 8)
+(define TOP-BOUNDARY 4)
+(define BOTTOM-BOUNDARY 0)
+
+(define (in-bounds? x y)
+  (and (x < RIGHT-BOUNDARY)
+       (x >= LEFT-BOUNDARY)
+       (x < TOP-BOUNDARY)
+       (x >= BOTTOM-BOUNDARY)))
+
+(define (in-bounds-placement? x0 y0 x1 y1)
+  (in-bounds? (+ x0 x1) (+ y0 y1)))
+
+;;TODO
+(define (make-move location piece) 1)
+
+
+;move generator
+;;TODO
+(define (generate-moves-single-piece board piece) 1)
+
+;graphical pieces
+;; TODO - add a piece bank for graphical display
+
+;pieces
+;; TODO - add piece construction and validation.
+(define (single-piece-flip-horizontal piece) (list (- (first piece)) (second piece) (third piece)))
+(define (multi-piece-flip-horizontal piece) (map single-piece-flip-horizontal piece))
 (define (single-piece-rotate-right piece) (list (second piece) (- (first piece)) (third piece)))
 (define (multi-piece-rotate-right piece) (map single-piece-rotate-right piece))
+
 (define red1 (list (list 0 0 "rs") (list 0 1 "re") (list 1 1 "rs") (list 2 1 "re")))
 
-(define red1-90 (multi-piece-rotate-right red1))
-(define move (place-multi-piece EMPTY-BOARD '(1 2) red1))
-(define move2 (place-multi-piece EMPTY-BOARD '(1 2) red1-90))
-(make-cell-board move)
-(make-cell-board move2)
+;gui
+;;TODO ADD BOUNDS CHECKING
+(define (next-state state move)
+  (place-multi-piece state (first move)(second move)))
+
+(define initial-state EMPTY-BOARD)
+(define (draw-handler state) (make-cell-board state))
+
+(define move1 (list '(0 0) red1))
+;;TODO - Dummy key handler
+(define (key-handler state a-key)
+  (cond
+    [(key=? a-key "up")(next-state state move1)]))
+
+(big-bang initial-state
+          (to-draw draw-handler)
+          (on-key key-handler))
