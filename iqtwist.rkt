@@ -86,9 +86,27 @@
   (apply above (map make-cell-board-row board)))
 
 ;non-graphical board
-(define EMPTY-BOARD (build-list ROWS (const (build-list COLS (const "e")))))
+(define COLOR-SYMBOLS (list "r" "s" "n" "y"))
+(define PEG-SYMBOL "p")
+(define COVER-SYMBOL "s")
+(define OPEN-COVER-SYMBOL "e")
+(define OPEN-COVER-PEG-SYMBOL "o")
 
-;moves
+(define PEG-SYMBOLS (map (lambda (x) (string-append x PEG-SYMBOL)) COLOR-SYMBOLS))
+(define COVER-SYMBOLS (map (lambda (x) (string-append x COVER-SYMBOL)) COLOR-SYMBOLS))
+(define OPEN-COVER-SYMBOLS (map (lambda (x) (string-append x OPEN-COVER-SYMBOL)) COLOR-SYMBOLS))
+(define OPEN-COVER-PEG-SYMBOLS (map (lambda (x) (string-append x OPEN-COVER-PEG-SYMBOL)) COLOR-SYMBOLS))
+
+(define EMPTY-BOARD (build-list ROWS (const (build-list COLS (const "e")))))
+(define (get-board x y board) (list-ref (list-ref board x) y))
+
+;PIECE CONSTANTS
+(define red1 (list (list 0 0 "rs") (list 0 1 "re") (list 1 1 "rs") (list 2 1 "re")))
+(define PIECE-LIST (list red1))
+
+;MOVES
+
+;;These do not need error checking, only move generator
 (define (place-single-piece board coord piece)
   (list-set board
             (+ (first coord)(first piece))
@@ -117,36 +135,93 @@
 (define BOTTOM-BOUNDARY 0)
 
 (define (in-bounds? x y)
-  (and (x < RIGHT-BOUNDARY)
-       (x >= LEFT-BOUNDARY)
-       (x < TOP-BOUNDARY)
-       (x >= BOTTOM-BOUNDARY)))
+  (and (< y RIGHT-BOUNDARY)
+       (>= y LEFT-BOUNDARY)
+       (< x TOP-BOUNDARY)
+       (>= x BOTTOM-BOUNDARY)))
 
 (define (in-bounds-placement? x0 y0 x1 y1)
   (in-bounds? (+ x0 x1) (+ y0 y1)))
 
-;;TODO
-(define (make-move location piece) 1)
+(define (is-empty? x y board)
+  (equal? "e" (get-board x y board)))
+
+(define (is-peg? x y board)
+  (member (get-board x y board) PEG-SYMBOLS))
+
+(define (is-same-color? peg-type piece-type)
+  (equal? (string-ref peg-type 0)
+          (string-ref piece-type 0)))
+
+(define (is-open-cover-peg? x y board type)
+  (and (is-peg? x y board)
+       (member type OPEN-COVER-SYMBOLS)
+       (is-same-color? (get-board x y board)
+                       type)))
+
+(define (can-place-single? x0 y0 board x1 y1 type)
+  (let ([x (+ x0 x1)]
+       [y (+ y0 y1)])
+    (and (in-bounds? x y)
+         (or (is-empty? x y board)
+             (is-open-cover-peg? x y board type)))))
+
+(define (can-place? location board piece)
+  (andmap (lambda (p)
+            (can-place-single? (first location)
+                               (second location)
+                               board
+                               (first p)
+                               (second p)
+                               (third p)))
+          piece))
 
 
 ;move generator
 ;;TODO
-(define (generate-moves-single-piece board piece) 1)
+(define EMPTY-STATE (list EMPTY-BOARD PIECE-LIST))
+
+(define (make-coords x)
+  (build-list COLS (lambda (i) (list x i))))
+
+(define BOARD-COORDS
+  (foldr append '() (build-list ROWS (lambda (i)(make-coords i)))))
+
+(define (generate-rotation-moves board rotation)
+  (foldl (lambda (p result)
+           (cond
+             [(can-place? p board rotation)(cons (list p rotation) result)]
+             [else (append '() result)]))
+         '()
+         BOARD-COORDS))
+         
+
+(define (generate-all-moves state) 1)
 
 ;graphical pieces
 ;; TODO - add a piece bank for graphical display
 
 ;pieces
-;; TODO - add piece construction and validation.
 (define (single-piece-flip-horizontal piece) (list (- (first piece)) (second piece) (third piece)))
 (define (multi-piece-flip-horizontal piece) (map single-piece-flip-horizontal piece))
 (define (single-piece-rotate-right piece) (list (second piece) (- (first piece)) (third piece)))
 (define (multi-piece-rotate-right piece) (map single-piece-rotate-right piece))
 
-(define red1 (list (list 0 0 "rs") (list 0 1 "re") (list 1 1 "rs") (list 2 1 "re")))
+(define (flip piece) (multi-piece-flip-horizontal piece))
+(define (rotate piece) (multi-piece-rotate-right piece))
+
+(define (rotate-90 piece) (rotate piece))
+(define (rotate-180 piece) (rotate (rotate-90 piece)))
+(define (rotate-270 piece) (rotate (rotate-180 piece)))
+
+(define (generate-rotations piece)
+  (list piece (rotate-90 piece)(rotate-180 piece)(rotate-270 piece)))
+
+(define (generate-all-transformations piece)
+  (let ([ipiece (flip piece)])
+    (append (generate-rotations piece) (generate-rotations ipiece))))
 
 ;gui
-;;TODO ADD BOUNDS CHECKING
 (define (next-state state move)
   (place-multi-piece state (first move)(second move)))
 
@@ -154,11 +229,17 @@
 (define (draw-handler state) (make-cell-board state))
 
 (define move1 (list '(0 0) red1))
+
 ;;TODO - Dummy key handler
 (define (key-handler state a-key)
   (cond
     [(key=? a-key "up")(next-state state move1)]))
 
-(big-bang initial-state
-          (to-draw draw-handler)
-          (on-key key-handler))
+;(big-bang initial-state
+;          (to-draw draw-handler)
+;          (on-key key-handler))
+
+(define boards (map (lambda (move)
+                      (next-state EMPTY-BOARD move))
+                    (generate-rotation-moves EMPTY-BOARD red1)))
+
