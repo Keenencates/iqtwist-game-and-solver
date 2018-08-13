@@ -10,10 +10,11 @@ pane of Dr. Racket and place pieces and pegs via definitions.
 + Peg Placement
 + Piece Placement
 + Piece Rotation
++ Basic GUI
 
 ## In-Progress (TODO)
-+ Separate Window
-+ Keyboard Interactive Play
++ Graphical Piece Bank
++ Mouse Interactive Play(i.e. drag and drop pieces)
 + Main Game Loop (game is played ad-hoc currently)
 + Valid Move Generator
 
