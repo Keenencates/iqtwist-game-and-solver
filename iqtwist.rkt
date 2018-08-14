@@ -187,16 +187,25 @@
 (define BOARD-COORDS
   (foldr append '() (build-list ROWS (lambda (i)(make-coords i)))))
 
-(define (generate-rotation-moves board rotation)
+(define (generate-location-moves board rotation)
   (foldl (lambda (p result)
            (cond
              [(can-place? p board rotation)(cons (list p rotation) result)]
              [else (append '() result)]))
          '()
          BOARD-COORDS))
-         
 
-(define (generate-all-moves state) 1)
+(define (generate-transformation-moves board piece)
+  (foldl (lambda (rotation result)
+           (append result (generate-location-moves board rotation)))
+         '()
+         (generate-all-transformations piece)))
+
+(define (generate-all-moves state)
+  (foldl (lambda (piece result)
+           (append result (generate-transformation-moves (first state) piece)))
+         '()
+         (second state)))
 
 ;graphical pieces
 ;; TODO - add a piece bank for graphical display
@@ -235,11 +244,8 @@
   (cond
     [(key=? a-key "up")(next-state state move1)]))
 
-;(big-bang initial-state
-;          (to-draw draw-handler)
-;          (on-key key-handler))
+(big-bang initial-state
+          (to-draw draw-handler)
+          (on-key key-handler))
 
-(define boards (map (lambda (move)
-                      (next-state EMPTY-BOARD move))
-                    (generate-rotation-moves EMPTY-BOARD red1)))
 
