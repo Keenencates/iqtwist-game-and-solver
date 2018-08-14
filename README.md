@@ -15,6 +15,7 @@ but there is no cohesive logic loop to stitch together.
 + Valid Move Generator
 
 ## In-Progress (TODO)
++ UNIT TESTS
 + Graphical Piece Bank
 + Mouse Interactive Play(i.e. drag and drop pieces)
 + Main Game Loop (game is played ad-hoc currently)
