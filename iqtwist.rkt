@@ -101,9 +101,17 @@
 (define (get-board x y board) (list-ref (list-ref board x) y))
 
 ;PIECE CONSTANTS
-(define red1 (list (list 0 0 "rs") (list 0 1 "re") (list 1 1 "rs") (list 2 1 "re")))
-(define PIECE-LIST (list red1))
+(define RED1 (list 'RED1 (list 0 0 "rs") (list 0 1 "re") (list 1 1 "rs") (list 2 1 "re")))
+(define RED2 (list 'RED2 (list 0 0 "rs") (list 1 0 "re") (list 1 1 "rs") (list 2 1 "rs")))
+(define BLUE1 (list 'BLUE1 (list 0 0 "bs") (list 1 0 "bs") (list 2 0 "bs")(list 1 1 "bs") (list 2 1 "be")))
+(define BLUE2 (list 'BLUE2 (list 0 0 "bs") (list 1 0 "be") (list 2 0 "bs") (list 3 0 "bs")))
+(define GREEN1 (list 'GREEN1(list 0 0 "gs") (list 0 1 "gs") (list 0 2 "gs") (list 1 1 "ge")))
+(define GREEN2 (list 'GREEN2(list 0 0 "ge") (list 0 1 "ge") (list 1 1 "gs")))
+(define YELLOW1 (list 'YELLOW1 (list 0 0 "ye") (list 1 0 "ys") (list 2 0 "ys")))
+(define YELLOW2 (list 'YELLOW2 (list 0 0 "ye") (list 1 0 "ye") (list 1 1 "ys") (list 1 2 "ys") (list 2 2 "ye")))
+(define PIECE-LIST (list RED1 RED2 BLUE1 BLUE2 GREEN1 GREEN2 YELLOW1 YELLOW2))
 
+(define move1 (list '(0 0) (rest GREEN2)))
 ;MOVES
 
 ;;These do not need error checking, only move generator
@@ -187,19 +195,19 @@
 (define BOARD-COORDS
   (foldr append '() (build-list ROWS (lambda (i)(make-coords i)))))
 
-(define (generate-location-moves board rotation)
+(define (generate-location-moves board rotation sym)
   (foldl (lambda (p result)
            (cond
-             [(can-place? p board rotation)(cons (list p rotation) result)]
+             [(can-place? p board rotation) (cons (list sym p rotation) result)]
              [else (append '() result)]))
          '()
          BOARD-COORDS))
 
 (define (generate-transformation-moves board piece)
   (foldl (lambda (rotation result)
-           (append result (generate-location-moves board rotation)))
+           (append result (generate-location-moves board rotation (first piece))))
          '()
-         (generate-all-transformations piece)))
+         (generate-all-transformations (rest piece))))
 
 (define (generate-all-moves state)
   (foldl (lambda (piece result)
@@ -227,17 +235,20 @@
   (list piece (rotate-90 piece)(rotate-180 piece)(rotate-270 piece)))
 
 (define (generate-all-transformations piece)
-  (let ([ipiece (flip piece)])
-    (append (generate-rotations piece) (generate-rotations ipiece))))
+  (set->list(list->set(let ([ipiece (flip piece)])
+    (append (generate-rotations piece) (generate-rotations ipiece))))))
+
+;validation
+
+(define (victory? board)
+  (andmap (lambda (x) (not (eqv? x "e")))))
 
 ;gui
-(define (next-state state move)
-  (place-multi-piece state (first move)(second move)))
+(define (next-state board move)
+  (place-multi-piece board (first move)(second move)))
 
 (define initial-state EMPTY-BOARD)
 (define (draw-handler state) (make-cell-board state))
-
-(define move1 (list '(0 0) red1))
 
 ;;TODO - Dummy key handler
 (define (key-handler state a-key)
@@ -249,3 +260,8 @@
           (on-key key-handler))
 
 
+;AI
+
+(define expand-node generate-all-moves)
+(define (traverse-edge state move)
+  (list (place-multi-piece (first state) (rest move)) (remove (eval (first-move)) (second state)))) 
