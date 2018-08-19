@@ -240,8 +240,11 @@
 
 ;validation
 
+(define (victory-row? row)
+  (andmap (lambda (x) (not (eqv? x "e"))) row))
+
 (define (victory? board)
-  (andmap (lambda (x) (not (eqv? x "e")))))
+  (andmap (lambda (rw) (victory-row? rw)) board))
 
 ;gui
 (define (next-state board move)
@@ -262,6 +265,19 @@
 
 ;AI
 
-(define expand-node generate-all-moves)
+(define explore-node generate-all-moves)
 (define (traverse-edge state move)
-  (list (place-multi-piece (first state) (rest move)) (remove (eval (first-move)) (second state)))) 
+  (list (place-multi-piece (first state) (first (rest move)) (second (rest move))) (remove (eval (first move)) (second state))))
+(define (expand-node state)
+  (map (lambda (mv) (traverse-edge state mv)) (explore-node state)))
+
+(define (DFS root-state)
+  (DFS-helper (list root-state)))
+
+(define (DFS-helper frontier)
+    (cond
+      [(and (not (empty? frontier))(victory? (first (first frontier)))) (first frontier)]
+      [(not (empty? frontier))
+       (let ([node (first frontier)]
+             [front (rest frontier)])
+         (DFS-helper (append (expand-node node) front)))]))
