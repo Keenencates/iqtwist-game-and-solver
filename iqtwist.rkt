@@ -2,6 +2,8 @@
 
 (require 2htdp/image)
 (require 2htdp/universe)
+(require rackunit)
+(require profile)
 
 ;TODO -- add unit testing
 ;     -- move generation
@@ -86,7 +88,7 @@
   (apply above (map make-cell-board-row board)))
 
 ;non-graphical board
-(define COLOR-SYMBOLS (list "r" "s" "n" "y"))
+(define COLOR-SYMBOLS (list "r" "g" "b" "y"))
 (define PEG-SYMBOL "p")
 (define COVER-SYMBOL "s")
 (define OPEN-COVER-SYMBOL "e")
@@ -115,13 +117,24 @@
 ;MOVES
 
 ;;These do not need error checking, only move generator
+(define (which-piece board coord piece)
+  (if (is-open-cover-peg-place? (+ (first coord)
+                                   (first piece))
+                                (+ (second coord)
+                                   (second piece))
+                                board
+                                (third piece))
+      (string (string-ref (third piece) 0) #\o)
+      (third piece)))
+
 (define (place-single-piece board coord piece)
-  (list-set board
-            (+ (first coord)(first piece))
-            (list-set (list-ref board
-                                (+ (first coord) (first piece)))
-                      (+ (second coord) (second piece))
-                      (third piece))))
+  (let ([new-piece (which-piece board coord piece)])
+    (list-set board
+              (+ (first coord)(first piece))
+              (list-set (list-ref board
+                                  (+ (first coord) (first piece)))
+                        (+ (second coord) (second piece))
+                        new-piece))))
 
 (define (place-multi-piece board coord pieces)
   (foldl (lambda (p b)
@@ -161,7 +174,10 @@
   (equal? (string-ref peg-type 0)
           (string-ref piece-type 0)))
 
-(define (is-open-cover-peg? x y board type)
+(define (is-open-cover-peg? piece)
+  (member piece OPEN-COVER-PEG-SYMBOLS))
+
+(define (is-open-cover-peg-place? x y board type)
   (and (is-peg? x y board)
        (member type OPEN-COVER-SYMBOLS)
        (is-same-color? (get-board x y board)
@@ -172,7 +188,7 @@
        [y (+ y0 y1)])
     (and (in-bounds? x y)
          (or (is-empty? x y board)
-             (is-open-cover-peg? x y board type)))))
+             (is-open-cover-peg-place? x y board type)))))
 
 (define (can-place? location board piece)
   (andmap (lambda (p)
@@ -189,11 +205,9 @@
 ;;TODO
 (define EMPTY-STATE (list EMPTY-BOARD PIECE-LIST))
 
-(define (make-coords x)
-  (build-list COLS (lambda (i) (list x i))))
+(define (make-coords x) (build-list COLS (lambda (i) (list x i))))
 
-(define BOARD-COORDS
-  (foldr append '() (build-list ROWS (lambda (i)(make-coords i)))))
+(define BOARD-COORDS (foldr append '() (build-list ROWS (lambda (i)(make-coords i)))))
 
 (define (generate-location-moves board rotation sym)
   (foldl (lambda (p result)
@@ -214,6 +228,13 @@
            (append result (generate-transformation-moves (first state) piece)))
          '()
          (second state)))
+
+(define (is-move-covering-peg? board move)
+  (let ([peg-covers (filter is-open-cover-peg? (flatten board))]
+        [next-board (place-multi-piece board (first move) (second move))])
+    (let ([new-covers (filter is-open-cover-peg? (flatten next-board))])
+      (> (length new-covers) (length peg-covers)))))
+          
 
 ;graphical pieces
 ;; TODO - add a piece bank for graphical display
@@ -258,18 +279,44 @@
   (cond
     [(key=? a-key "up")(next-state state move1)]))
 
-(big-bang initial-state
-          (to-draw draw-handler)
-          (on-key key-handler))
+;(big-bang initial-state
+;          (to-draw draw-handler)
+;          (on-key key-handler))
 
 
 ;AI
+;; nodes/states are (board 
+(define (prune-non-peg-covering-edges node edges)
+  (let ([pruned-edges (filter (lambda (mv)
+                                (is-move-covering-peg? (first node) (rest mv)))
+                              edges)])
+    (if (empty? pruned-edges)
+        edges
+        pruned-edges)))
 
 (define explore-node generate-all-moves)
+
 (define (traverse-edge state move)
   (list (place-multi-piece (first state) (first (rest move)) (second (rest move))) (remove (eval (first move)) (second state))))
+
 (define (expand-node state)
   (map (lambda (mv) (traverse-edge state mv)) (explore-node state)))
+
+(define (pruned-explore-node state)
+  (prune-non-peg-covering-edges state (explore-node state)))
+
+(define (pruned-expand-node state)
+  (map (lambda (mv) (traverse-edge state mv)) (pruned-explore-node state)))
+
+(define (coordinates-of pred board)
+  (filter (lambda (sq)(pred (get-board (first sq) (second sq) board)))
+          BOARD-COORDS))
+
+(define (orphaned-squares? state)
+  (let ([expanded (pruned-expand-node state)])
+    (fold set-remove
+          (coordinates-of is-empty? ))))
+  
 
 (define (DFS root-state)
   (DFS-helper (list root-state)))
@@ -280,4 +327,24 @@
       [(not (empty? frontier))
        (let ([node (first frontier)]
              [front (rest frontier)])
-         (DFS-helper (append (expand-node node) front)))]))
+         (DFS-helper (append (pruned-expand-node node) front)))]))
+
+;; BASIC TESTING
+(define b1 (list (list "rp" "e" "e" "e" "e" "e" "e" "e")
+                 (list "e" "e" "e" "e" "e" "e" "e" "e")
+                 (list "e" "e" "e" "e" "e" "e" "e" "e")
+                 (list "e" "e" "e" "e" "e" "e" "e" "e")))
+
+(define b2 (list (list "ro" "rs" "re" "e" "e" "e" "e" "e")
+                 (list "rs" "e" "e" "e" "e" "e" "e" "e")
+                 (list "e" "e" "e" "e" "e" "e" "e" "e")
+                 (list "e" "e" "e" "e" "e" "e" "e" "e")))
+
+(check-equal? (place-multi-piece b1 '(1 0) (rotate-270 (rest RED1))) b2)
+
+(define tb1 (list (list "e" "e" "e" "e" "e" "e" "e" "e")
+                  (list "e" "e" "yp" "e" "e" "bp" "e" "e")
+                  (list "e" "e" "e" "e" "e" "e" "e" "e")
+                  (list "e" "e" "gp" "e" "e" "rp" "e" "e")))
+
+(define ts1 (list tb1 PIECE-LIST))
