@@ -1,9 +1,8 @@
 #lang racket
 
-(require 2htdp/image)
-(require 2htdp/universe)
-(require rackunit)
+;(require rackunit)
 (require profile)
+;(require "gui-iqtwist.rkt")
 
 ;TODO -- add unit testing
 ;     -- move generation
@@ -11,83 +10,25 @@
 ;     -- grid coordinates
 ;     -- mouse interaction
 
-;graphical constants
+;Board constants
 (define ROWS 4)
 (define COLS 8)
-(define CELL-WIDTH 30)
-(define CELL-HEIGHT 30)
-(define CELL-CENTER-X (/ CELL-WIDTH 2))
-(define CELL-CENTER-Y (/ CELL-HEIGHT 2))
-(define INNER-OFFSET 7)
-(define INNER-RADIUS (- (/ CELL-WIDTH 2) INNER-OFFSET))
-(define OUTER-OFFSET 2)
-(define OUTER-RADIUS (- (/ CELL-WIDTH 2) OUTER-OFFSET))
-(define BOARD-WIDTH (* CELL-WIDTH COLS)) 
-(define BOARD-HEIGHT (* CELL-HEIGHT ROWS))
-(define (THICK-PEN color) (make-pen color 4 "solid" "round" "round"))
 
-;graphical cell-types
-;;; TODO change circle to ellipsoid
-(define EMPTY-CELL (overlay (circle INNER-RADIUS
-                                    "outline"
-                                    "white")
-                            (rectangle CELL-WIDTH
-                                       CELL-HEIGHT
-                                       "solid"
-                                       "black")))
+;PIECE CONSTANTS
+(define RED1 (list 'RED1 (list 0 0 "rs") (list 0 1 "re") (list 1 1 "rs") (list 2 1 "re")))
+(define RED2 (list 'RED2 (list 0 0 "rs") (list 1 0 "re") (list 1 1 "rs") (list 2 1 "rs")))
+(define BLUE1 (list 'BLUE1 (list 0 0 "bs") (list 1 0 "bs") (list 2 0 "bs")(list 1 1 "bs") (list 2 1 "be")))
+(define BLUE2 (list 'BLUE2 (list 0 0 "bs") (list 1 0 "be") (list 2 0 "bs") (list 3 0 "bs")))
+(define GREEN1 (list 'GREEN1(list 0 0 "gs") (list 0 1 "gs") (list 0 2 "gs") (list 1 1 "ge")))
+(define GREEN2 (list 'GREEN2(list 0 0 "ge") (list 0 1 "ge") (list 1 1 "gs")))
+(define YELLOW1 (list 'YELLOW1 (list 0 0 "ye") (list 1 0 "ys") (list 2 0 "ys")))
+(define YELLOW2 (list 'YELLOW2 (list 0 0 "ye") (list 1 0 "ye") (list 1 1 "ys") (list 1 2 "ys") (list 2 2 "ye")))
+(define PIECE-LIST (list RED1 RED2 BLUE1 BLUE2 GREEN1 GREEN2 YELLOW1 YELLOW2))
 
-(define (make-peg-cell color) (overlay (circle INNER-RADIUS
-                                               "solid"
-                                               color)
-                                  (rectangle CELL-WIDTH
-                                             CELL-HEIGHT
-                                             "solid"
-                                             "black")))
+(define-namespace-anchor anc)
+(define ns (namespace-anchor->namespace anc))
 
-(define (make-open-cover-peg-cell color)
-  (overlay (circle OUTER-RADIUS "outline" (THICK-PEN color))
-           (make-peg-cell color)))
-
-(define (make-solid-cover-cell color)
-  (overlay (circle (+ OUTER-RADIUS 1) "solid" color) EMPTY-CELL))
-
-(define (make-open-cover-cell color)
-  (overlay (circle OUTER-RADIUS "outline" (THICK-PEN color))
-           EMPTY-CELL))
-
-;graphical board
-(define EMPTY-SCENE (empty-scene BOARD-WIDTH BOARD-HEIGHT))
-(define EMPTY-CELL-BOARD-ROW (apply beside (build-list COLS (const EMPTY-CELL))))
-(define EMPTY-CELL-BOARD (apply above (build-list ROWS (const EMPTY-CELL-BOARD-ROW))))
-
-(define CELL-TABLE (hash "e" EMPTY-CELL
-                         "rp" (make-peg-cell "red")
-                         "gp" (make-peg-cell "green")
-                         "bp" (make-peg-cell "blue")
-                         "yp" (make-peg-cell "yellow")
-                         "ro" (make-open-cover-peg-cell "red")
-                         "go" (make-open-cover-peg-cell "green")
-                         "bo" (make-open-cover-peg-cell "blue")
-                         "yo" (make-open-cover-peg-cell "yellow")
-                         "rs" (make-solid-cover-cell "red")
-                         "gs" (make-solid-cover-cell "green")
-                         "bs" (make-solid-cover-cell "blue")
-                         "ys" (make-solid-cover-cell "yellow")
-                         "re" (make-open-cover-cell "red")
-                         "ge" (make-open-cover-cell "green")
-                         "be" (make-open-cover-cell "blue")
-                         "ye" (make-open-cover-cell "yellow")))
-
-(define (get-cell c)
-  (hash-ref CELL-TABLE c))
-
-(define (make-cell-board-row board-row)
-  (apply beside (map get-cell board-row)))
-
-(define (make-cell-board board)
-  (apply above (map make-cell-board-row board)))
-
-;non-graphical board
+;BOARD
 (define COLOR-SYMBOLS (list "r" "g" "b" "y"))
 (define PEG-SYMBOL "p")
 (define COVER-SYMBOL "s")
@@ -102,20 +43,7 @@
 (define EMPTY-BOARD (build-list ROWS (const (build-list COLS (const "e")))))
 (define (get-board x y board) (list-ref (list-ref board x) y))
 
-;PIECE CONSTANTS
-(define RED1 (list 'RED1 (list 0 0 "rs") (list 0 1 "re") (list 1 1 "rs") (list 2 1 "re")))
-(define RED2 (list 'RED2 (list 0 0 "rs") (list 1 0 "re") (list 1 1 "rs") (list 2 1 "rs")))
-(define BLUE1 (list 'BLUE1 (list 0 0 "bs") (list 1 0 "bs") (list 2 0 "bs")(list 1 1 "bs") (list 2 1 "be")))
-(define BLUE2 (list 'BLUE2 (list 0 0 "bs") (list 1 0 "be") (list 2 0 "bs") (list 3 0 "bs")))
-(define GREEN1 (list 'GREEN1(list 0 0 "gs") (list 0 1 "gs") (list 0 2 "gs") (list 1 1 "ge")))
-(define GREEN2 (list 'GREEN2(list 0 0 "ge") (list 0 1 "ge") (list 1 1 "gs")))
-(define YELLOW1 (list 'YELLOW1 (list 0 0 "ye") (list 1 0 "ys") (list 2 0 "ys")))
-(define YELLOW2 (list 'YELLOW2 (list 0 0 "ye") (list 1 0 "ye") (list 1 1 "ys") (list 1 2 "ys") (list 2 2 "ye")))
-(define PIECE-LIST (list RED1 RED2 BLUE1 BLUE2 GREEN1 GREEN2 YELLOW1 YELLOW2))
-
-(define move1 (list '(0 0) (rest GREEN2)))
 ;MOVES
-
 ;;These do not need error checking, only move generator
 (define (which-piece board coord piece)
   (if (is-open-cover-peg-place? (+ (first coord)
@@ -234,10 +162,6 @@
         [next-board (place-multi-piece board (first move) (second move))])
     (let ([new-covers (filter is-open-cover-peg? (flatten next-board))])
       (> (length new-covers) (length peg-covers)))))
-          
-
-;graphical pieces
-;; TODO - add a piece bank for graphical display
 
 ;pieces
 (define (single-piece-flip-horizontal piece) (list (- (first piece)) (second piece) (third piece)))
@@ -267,22 +191,6 @@
 (define (victory? board)
   (andmap (lambda (rw) (victory-row? rw)) board))
 
-;gui
-(define (next-state board move)
-  (place-multi-piece board (first move)(second move)))
-
-(define initial-state EMPTY-BOARD)
-(define (draw-handler state) (make-cell-board state))
-
-;;TODO - Dummy key handler
-(define (key-handler state a-key)
-  (cond
-    [(key=? a-key "up")(next-state state move1)]))
-
-;(big-bang initial-state
-;          (to-draw draw-handler)
-;          (on-key key-handler))
-
 
 ;AI
 ;; nodes/states are (board 
@@ -297,7 +205,7 @@
 (define explore-node generate-all-moves)
 
 (define (traverse-edge state move)
-  (list (place-multi-piece (first state) (first (rest move)) (second (rest move))) (remove (eval (first move)) (second state))))
+  (list (place-multi-piece (first state) (first (rest move)) (second (rest move))) (remove (eval (first move) ns) (second state))))
 
 (define (expand-node state)
   (map (lambda (mv) (traverse-edge state mv)) (explore-node state)))
@@ -309,14 +217,23 @@
   (map (lambda (mv) (traverse-edge state mv)) (pruned-explore-node state)))
 
 (define (coordinates-of pred board)
-  (filter (lambda (sq)(pred (get-board (first sq) (second sq) board)))
+  (filter (lambda (sq)(pred (first sq) (second sq) board))
           BOARD-COORDS))
 
-(define (orphaned-squares? state)
+(define (all-empty-coords states)
+  (foldl (lambda (state res)
+           (set-union res (list->set(coordinates-of is-empty? (first state)))))
+         (set)
+         states))
+
+(define (no-orphaned-squares? state)
   (let ([expanded (pruned-expand-node state)])
-    (fold set-remove
-          (coordinates-of is-empty? ))))
-  
+    (set-empty?(set-subtract
+            (list->set(coordinates-of is-empty? (first state)))
+            (all-empty-coords expanded)))))
+
+(define (prune-orphaned-states states)
+  (filter no-orphaned-squares? states))
 
 (define (DFS root-state)
   (DFS-helper (list root-state)))
@@ -329,22 +246,11 @@
              [front (rest frontier)])
          (DFS-helper (append (pruned-expand-node node) front)))]))
 
-;; BASIC TESTING
-(define b1 (list (list "rp" "e" "e" "e" "e" "e" "e" "e")
-                 (list "e" "e" "e" "e" "e" "e" "e" "e")
-                 (list "e" "e" "e" "e" "e" "e" "e" "e")
-                 (list "e" "e" "e" "e" "e" "e" "e" "e")))
-
-(define b2 (list (list "ro" "rs" "re" "e" "e" "e" "e" "e")
-                 (list "rs" "e" "e" "e" "e" "e" "e" "e")
-                 (list "e" "e" "e" "e" "e" "e" "e" "e")
-                 (list "e" "e" "e" "e" "e" "e" "e" "e")))
-
-(check-equal? (place-multi-piece b1 '(1 0) (rotate-270 (rest RED1))) b2)
-
 (define tb1 (list (list "e" "e" "e" "e" "e" "e" "e" "e")
                   (list "e" "e" "yp" "e" "e" "bp" "e" "e")
                   (list "e" "e" "e" "e" "e" "e" "e" "e")
                   (list "e" "e" "gp" "e" "e" "rp" "e" "e")))
 
-(define ts1 (list tb1 PIECE-LIST))
+;(define ts1 (list tb1 PIECE-LIST))
+;(define soln (DFS ts1))
+;(display soln)
