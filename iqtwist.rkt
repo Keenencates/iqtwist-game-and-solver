@@ -1,4 +1,4 @@
-#lang racket
+#lang typed/racket
 
 ;(require rackunit)
 (require profile)
@@ -11,22 +11,44 @@
 ;     -- mouse interaction
 
 ;Board constants
+
+(struct Point ([x : Number] [y : Number] [pc : String]))
+(define-type Board (-> Listof(Listof(Int))))
+(define-type Piece (-> Listof(Listof(Point))))
+
+(: ROWS Number)
 (define ROWS 4)
+
+(: COLS Number)
 (define COLS 8)
 
 ;PIECE CONSTANTS
+(: RED1 Piece)
 (define RED1 (list 'RED1 (list 0 0 "rs") (list 0 1 "re") (list 1 1 "rs") (list 2 1 "re")))
-(define RED2 (list 'RED2 (list 0 0 "rs") (list 1 0 "re") (list 1 1 "rs") (list 2 1 "rs")))
-(define BLUE1 (list 'BLUE1 (list 0 0 "bs") (list 1 0 "bs") (list 2 0 "bs")(list 1 1 "bs") (list 2 1 "be")))
-(define BLUE2 (list 'BLUE2 (list 0 0 "bs") (list 1 0 "be") (list 2 0 "bs") (list 3 0 "bs")))
-(define GREEN1 (list 'GREEN1(list 0 0 "gs") (list 0 1 "gs") (list 0 2 "gs") (list 1 1 "ge")))
-(define GREEN2 (list 'GREEN2(list 0 0 "ge") (list 0 1 "ge") (list 1 1 "gs")))
-(define YELLOW1 (list 'YELLOW1 (list 0 0 "ye") (list 1 0 "ys") (list 2 0 "ys")))
-(define YELLOW2 (list 'YELLOW2 (list 0 0 "ye") (list 1 0 "ye") (list 1 1 "ys") (list 1 2 "ys") (list 2 2 "ye")))
-(define PIECE-LIST (list RED1 RED2 BLUE1 BLUE2 GREEN1 GREEN2 YELLOW1 YELLOW2))
 
-(define-namespace-anchor anc)
-(define ns (namespace-anchor->namespace anc))
+(: RED2 Piece)
+(define RED2 (list 'RED2 (list 0 0 "rs") (list 1 0 "re") (list 1 1 "rs") (list 2 1 "rs")))
+
+(: BLUE1 Piece)
+(define BLUE1 (list 'BLUE1 (list 0 0 "bs") (list 1 0 "bs") (list 2 0 "bs")(list 1 1 "bs") (list 2 1 "be")))
+
+(: BLUE2 Piece
+(define BLUE2 (list 'BLUE2 (list 0 0 "bs") (list 1 0 "be") (list 2 0 "bs") (list 3 0 "bs")))
+
+(: GREEN1 Piece)
+(define GREEN1 (list 'GREEN1(list 0 0 "gs") (list 0 1 "gs") (list 0 2 "gs") (list 1 1 "ge")))
+
+(: GREEN2 Piece)
+(define GREEN2 (list 'GREEN2(list 0 0 "ge") (list 0 1 "ge") (list 1 1 "gs")))
+
+(: YELLOW1 Piece)
+(define YELLOW1 (list 'YELLOW1 (list 0 0 "ye") (list 1 0 "ys") (list 2 0 "ys")))
+
+(: YELLOW2 Piece)
+(define YELLOW2 (list 'YELLOW2 (list 0 0 "ye") (list 1 0 "ye") (list 1 1 "ys") (list 1 2 "ys") (list 2 2 "ye")))
+
+(: PIECE-LIST Listof(Piece))
+(define PIECE-LIST (list RED1 RED2 BLUE1 BLUE2 GREEN1 GREEN2 YELLOW1 YELLOW2))
 
 ;BOARD
 (define COLOR-SYMBOLS (list "r" "g" "b" "y"))
@@ -35,12 +57,14 @@
 (define OPEN-COVER-SYMBOL "e")
 (define OPEN-COVER-PEG-SYMBOL "o")
 
-(define PEG-SYMBOLS (map (lambda (x) (string-append x PEG-SYMBOL)) COLOR-SYMBOLS))
-(define COVER-SYMBOLS (map (lambda (x) (string-append x COVER-SYMBOL)) COLOR-SYMBOLS))
-(define OPEN-COVER-SYMBOLS (map (lambda (x) (string-append x OPEN-COVER-SYMBOL)) COLOR-SYMBOLS))
-(define OPEN-COVER-PEG-SYMBOLS (map (lambda (x) (string-append x OPEN-COVER-PEG-SYMBOL)) COLOR-SYMBOLS))
+(define PEG-SYMBOLS (map (lambda ([x : String]) (string-append x PEG-SYMBOL)) COLOR-SYMBOLS))
+(define COVER-SYMBOLS (map (lambda ([x : String]) (string-append x COVER-SYMBOL)) COLOR-SYMBOLS))
+(define OPEN-COVER-SYMBOLS (map (lambda ([x : String]) (string-append x OPEN-COVER-SYMBOL)) COLOR-SYMBOLS))
+(define OPEN-COVER-PEG-SYMBOLS (map (lambda ([x : String]) (string-append x OPEN-COVER-PEG-SYMBOL)) COLOR-SYMBOLS))
 
 (define EMPTY-BOARD (build-list ROWS (const (build-list COLS (const "e")))))
+
+(:get-board (-> Int Int Board String))
 (define (get-board x y board) (list-ref (list-ref board x) y))
 
 ;MOVES
@@ -130,7 +154,7 @@
 
 
 ;move generator
-;;TODO
+
 (define EMPTY-STATE (list EMPTY-BOARD PIECE-LIST))
 
 (define (make-coords x) (build-list COLS (lambda (i) (list x i))))
@@ -141,7 +165,7 @@
   (foldl (lambda (p result)
            (cond
              [(can-place? p board rotation) (cons (list sym p rotation) result)]
-             [else (append '() result)]))
+             [else result]))
          '()
          BOARD-COORDS))
 
@@ -183,14 +207,6 @@
   (set->list(list->set(let ([ipiece (flip piece)])
     (append (generate-rotations piece) (generate-rotations ipiece))))))
 
-;validation
-
-(define (victory-row? row)
-  (andmap (lambda (x) (not (eqv? x "e"))) row))
-
-(define (victory? board)
-  (andmap (lambda (rw) (victory-row? rw)) board))
-
 
 ;AI
 ;; nodes/states are (board 
@@ -202,10 +218,10 @@
         edges
         pruned-edges)))
 
-(define explore-node generate-all-moves)
+(define (explore-node state) (set->list (list->set (generate-all-moves state))))
 
 (define (traverse-edge state move)
-  (list (place-multi-piece (first state) (first (rest move)) (second (rest move))) (remove (eval (first move) ns) (second state))))
+  (list (place-multi-piece (first state) (first (rest move)) (second (rest move))) (remove (first move) (second state))))
 
 (define (expand-node state)
   (map (lambda (mv) (traverse-edge state mv)) (explore-node state)))
@@ -214,43 +230,25 @@
   (prune-non-peg-covering-edges state (explore-node state)))
 
 (define (pruned-expand-node state)
-  (map (lambda (mv) (traverse-edge state mv)) (pruned-explore-node state)))
-
-(define (coordinates-of pred board)
-  (filter (lambda (sq)(pred (first sq) (second sq) board))
-          BOARD-COORDS))
-
-(define (all-empty-coords states)
-  (foldl (lambda (state res)
-           (set-union res (list->set(coordinates-of is-empty? (first state)))))
-         (set)
-         states))
-
-(define (no-orphaned-squares? state)
-  (let ([expanded (pruned-expand-node state)])
-    (set-empty?(set-subtract
-            (list->set(coordinates-of is-empty? (first state)))
-            (all-empty-coords expanded)))))
-
-(define (prune-orphaned-states states)
-  (filter no-orphaned-squares? states))
+  (map (lambda (mv) (delay (traverse-edge state mv))) (pruned-explore-node state)))
 
 (define (DFS root-state)
   (DFS-helper (list root-state)))
 
 (define (DFS-helper frontier)
+  (let ([node (if (not (empty? frontier))
+                  (force (first frontier))
+                  '())])
     (cond
-      [(and (not (empty? frontier))(victory? (first (first frontier)))) (first frontier)]
-      [(not (empty? frontier))
-       (let ([node (first frontier)]
-             [front (rest frontier)])
-         (DFS-helper (append (pruned-expand-node node) front)))]))
+      [(empty? node) '()]
+      [(empty? (second node)) (first )]
+      [else (DFS-helper (append (pruned-expand-node node) (rest frontier)))])))
 
 (define tb1 (list (list "e" "e" "e" "e" "e" "e" "e" "e")
                   (list "e" "e" "yp" "e" "e" "bp" "e" "e")
                   (list "e" "e" "e" "e" "e" "e" "e" "e")
                   (list "e" "e" "gp" "e" "e" "rp" "e" "e")))
-
+    
 ;(define ts1 (list tb1 PIECE-LIST))
 ;(define soln (DFS ts1))
 ;(display soln)
