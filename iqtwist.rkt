@@ -10,215 +10,268 @@
 ;     -- grid coordinates
 ;     -- mouse interaction
 
-;Board constants
+(struct Point ([row : Integer] [col : Integer]) #:transparent)
+(struct Segment ([point : Point] [color : Symbol] [geom : Symbol]) #:transparent)
+(define-type Board (Listof Segment))
+(struct Piece ([name : Symbol] [segments : (Listof Segment)]) #:transparent)
+(struct State ([board : Board] [piece-list : (Listof Piece)][place-pieces : (Listof Symbol)]) #:transparent)
 
-(struct Point ([x : Number] [y : Number] [pc : String]))
-(define-type Board (-> Listof(Listof(Int))))
-(define-type Piece (-> Listof(Listof(Point))))
+(: make-point (-> (Listof Integer) Point))
+(define (make-point xy)
+  (Point (first xy) (second xy)))
 
-(: ROWS Number)
-(define ROWS 4)
-
-(: COLS Number)
-(define COLS 8)
+(: point-eqv? (-> Point Point Boolean))
+(define (point-eqv? pt1 pt2)
+  (and (eqv? (Point-row pt1) (Point-row pt2))
+       (eqv? (Point-col pt1) (Point-col pt2))))
 
 ;PIECE CONSTANTS
 (: RED1 Piece)
-(define RED1 (list 'RED1 (list 0 0 "rs") (list 0 1 "re") (list 1 1 "rs") (list 2 1 "re")))
+(define RED1 (Piece 'RED1 (list (Segment (Point 0 0) 'r 's)
+                                (Segment (Point 0 1) 'r 'o)
+                                (Segment (Point 1 1) 'r 's)
+                                (Segment (Point 2 1) 'r 'o))))
 
 (: RED2 Piece)
-(define RED2 (list 'RED2 (list 0 0 "rs") (list 1 0 "re") (list 1 1 "rs") (list 2 1 "rs")))
+(define RED2 (Piece 'RED2 (list (Segment (Point 0 0) 'r 's)
+                                (Segment (Point 1 0) 'r 'o)
+                                (Segment (Point 1 1) 'r 's)
+                                (Segment (Point 2 1) 'r 's))))
 
 (: BLUE1 Piece)
-(define BLUE1 (list 'BLUE1 (list 0 0 "bs") (list 1 0 "bs") (list 2 0 "bs")(list 1 1 "bs") (list 2 1 "be")))
+(define BLUE1 (Piece 'BLUE1 (list (Segment (Point 0 0) 'b 's)
+                                  (Segment (Point 1 0) 'b 's)
+                                  (Segment (Point 2 0) 'b 's)
+                                  (Segment (Point 1 1) 'b 's)
+                                  (Segment (Point 2 1) 'b 'o))))
 
-(: BLUE2 Piece
-(define BLUE2 (list 'BLUE2 (list 0 0 "bs") (list 1 0 "be") (list 2 0 "bs") (list 3 0 "bs")))
+(: BLUE2 Piece)
+(define BLUE2 (Piece 'BLUE2 (list (Segment (Point 0 0) 'b 's)
+                                  (Segment (Point 1 0) 'b 'o)
+                                  (Segment (Point 2 0) 'b 's)
+                                  (Segment (Point 3 0) 'b 's))))
 
 (: GREEN1 Piece)
-(define GREEN1 (list 'GREEN1(list 0 0 "gs") (list 0 1 "gs") (list 0 2 "gs") (list 1 1 "ge")))
+(define GREEN1 (Piece 'GREEN1 (list (Segment (Point 0 0) 'g 's)
+                                    (Segment (Point 0 1) 'g 's)
+                                    (Segment (Point 0 2) 'g 's)
+                                    (Segment (Point 1 1) 'g 'o))))
 
 (: GREEN2 Piece)
-(define GREEN2 (list 'GREEN2(list 0 0 "ge") (list 0 1 "ge") (list 1 1 "gs")))
+(define GREEN2 (Piece 'GREEN2 (list (Segment (Point 0 0) 'g 'o)
+                                    (Segment (Point 0 1) 'g 'o)
+                                    (Segment (Point 1 1) 'g 's))))
 
 (: YELLOW1 Piece)
-(define YELLOW1 (list 'YELLOW1 (list 0 0 "ye") (list 1 0 "ys") (list 2 0 "ys")))
+(define YELLOW1 (Piece 'YELLOW1 (list (Segment (Point 0 0) 'y 'o)
+                                      (Segment (Point 1 0) 'y 's)
+                                      (Segment (Point 2 0) 'y 's))))
 
 (: YELLOW2 Piece)
-(define YELLOW2 (list 'YELLOW2 (list 0 0 "ye") (list 1 0 "ye") (list 1 1 "ys") (list 1 2 "ys") (list 2 2 "ye")))
+(define YELLOW2 (Piece 'YELLOW2 (list (Segment (Point 0 0) 'y 'o)
+                                      (Segment (Point 1 0) 'y 'o)
+                                      (Segment (Point 1 1) 'y 's)
+                                      (Segment (Point 1 2) 'y 's)
+                                      (Segment (Point 2 2) 'y 'o))))
 
-(: PIECE-LIST Listof(Piece))
-(define PIECE-LIST (list RED1 RED2 BLUE1 BLUE2 GREEN1 GREEN2 YELLOW1 YELLOW2))
+(: PIECE-LIST (Listof Piece))
+(define PIECE-LIST (list RED1 RED2 BLUE1 BLUE2
+                         GREEN1 GREEN2 YELLOW1 YELLOW2))
 
-;BOARD
-(define COLOR-SYMBOLS (list "r" "g" "b" "y"))
-(define PEG-SYMBOL "p")
-(define COVER-SYMBOL "s")
-(define OPEN-COVER-SYMBOL "e")
-(define OPEN-COVER-PEG-SYMBOL "o")
+;PIECE HELPER FUNCTIONS
 
-(define PEG-SYMBOLS (map (lambda ([x : String]) (string-append x PEG-SYMBOL)) COLOR-SYMBOLS))
-(define COVER-SYMBOLS (map (lambda ([x : String]) (string-append x COVER-SYMBOL)) COLOR-SYMBOLS))
-(define OPEN-COVER-SYMBOLS (map (lambda ([x : String]) (string-append x OPEN-COVER-SYMBOL)) COLOR-SYMBOLS))
-(define OPEN-COVER-PEG-SYMBOLS (map (lambda ([x : String]) (string-append x OPEN-COVER-PEG-SYMBOL)) COLOR-SYMBOLS))
+(: get-piece-segment (-> Piece Integer Segment))
+(define (get-piece-segment piece n)
+  (list-ref (Piece-segments piece) n))
 
-(define EMPTY-BOARD (build-list ROWS (const (build-list COLS (const "e")))))
+(: flip-point (-> Point Point))
+(define (flip-point pt)
+  (Point (- (Point-row pt)) (Point-col pt)))
 
-(:get-board (-> Int Int Board String))
-(define (get-board x y board) (list-ref (list-ref board x) y))
+(: rotate-point (-> Point Point))
+(define (rotate-point pt)
+  (Point (Point-col pt) (- (Point-row pt))))
 
-;MOVES
-;;These do not need error checking, only move generator
-(define (which-piece board coord piece)
-  (if (is-open-cover-peg-place? (+ (first coord)
-                                   (first piece))
-                                (+ (second coord)
-                                   (second piece))
-                                board
-                                (third piece))
-      (string (string-ref (third piece) 0) #\o)
-      (third piece)))
+(: transform-piece (-> Piece (-> Point Point) Piece))
+(define (transform-piece piece transform-point)
+  (Piece (Piece-name piece) (map (lambda ([segment : Segment])
+                                   (Segment (transform-point (Segment-point segment))
+                                            (Segment-color segment)
+                                            (Segment-geom segment)))
+                                 (Piece-segments piece))))
 
-(define (place-single-piece board coord piece)
-  (let ([new-piece (which-piece board coord piece)])
-    (list-set board
-              (+ (first coord)(first piece))
-              (list-set (list-ref board
-                                  (+ (first coord) (first piece)))
-                        (+ (second coord) (second piece))
-                        new-piece))))
+(: rotate-90 (-> Piece Piece))
+(define (rotate-90 piece) (transform-piece piece rotate-point))
 
-(define (place-multi-piece board coord pieces)
-  (foldl (lambda (p b)
-           (place-single-piece b coord p))
-           board
-           pieces))
+(: flip (-> Piece Piece))
+(define (flip piece) (transform-piece piece flip-point)) 
 
-;move error checking
+(: generate-transformations (-> (Listof Piece) (Listof Piece)))
+(define (generate-transformations pieces)
+  (foldl (lambda ([piece : Piece][res : (Listof Piece)])
+           (let ([fpiece : Piece (flip piece)])
+             (append res (remove-duplicates (list piece
+                                                  (rotate-90 piece)
+                                                  (rotate-90 (rotate-90 piece))
+                                                  (rotate-90 (rotate-90 (rotate-90 piece)))
+                                                  fpiece
+                                                  (rotate-90 fpiece)
+                                                  (rotate-90 (rotate-90 fpiece))
+                                                  (rotate-90 (rotate-90 (rotate-90 fpiece))))))))
+         '()
+         pieces))
 
-;;A move is a pair, the location to place origin point,
-;;and a list of relative piece segments coords to piece
-;;origin.
+;BOARD CONSTANTS
+(: ROWS Integer)
+(define ROWS 4)
 
-;;Need to check for errors when a move would be invalid.
-;;Piece construction should already be validated.
+(: COLS Integer)
+(define COLS 8)
+
+(: LEFT-BOUNDARY Integer)
 (define LEFT-BOUNDARY 0)
-(define RIGHT-BOUNDARY 8)
-(define TOP-BOUNDARY 4)
+
+(: RIGHT-BOUNDARY Integer)
+(define RIGHT-BOUNDARY COLS)
+
+(: TOP-BOUNDARY Integer)
+(define TOP-BOUNDARY ROWS)
+
+(: BOTTOM-BOUNDARY Integer)
 (define BOTTOM-BOUNDARY 0)
 
-(define (in-bounds? x y)
-  (and (< y RIGHT-BOUNDARY)
-       (>= y LEFT-BOUNDARY)
-       (< x TOP-BOUNDARY)
-       (>= x BOTTOM-BOUNDARY)))
+(: in-bounds? (-> Point Boolean))
+(define (in-bounds? point)
+  (let ([row : Integer (Point-row point)]
+        [col : Integer (Point-col point)])
+    (and (< col RIGHT-BOUNDARY)
+         (>= col LEFT-BOUNDARY)
+         (< row TOP-BOUNDARY)
+         (>= row BOTTOM-BOUNDARY))))
 
-(define (in-bounds-placement? x0 y0 x1 y1)
-  (in-bounds? (+ x0 x1) (+ y0 y1)))
+(: BOARD-COORDS (Listof Point))
+(define BOARD-COORDS (map make-point (cartesian-product (range ROWS) (range COLS))))
 
-(define (is-empty? x y board)
-  (equal? "e" (get-board x y board)))
+(: EMPTY-BOARD Board)
+(define EMPTY-BOARD (map (lambda ([pt : Point]) (Segment pt 'e 'e)) BOARD-COORDS))
 
-(define (is-peg? x y board)
-  (member (get-board x y board) PEG-SYMBOLS))
+(: EMPTY-STATE State)
+(define EMPTY-STATE (State EMPTY-BOARD PIECE-LIST '()))
 
-(define (is-same-color? peg-type piece-type)
-  (equal? (string-ref peg-type 0)
-          (string-ref piece-type 0)))
+;BOARD HELPER FUNCTIONS
+(: 2d->1d (-> Point Integer))
+(define (2d->1d point)
+  (+ (* COLS (Point-row point)) (Point-col point)))
 
-(define (is-open-cover-peg? piece)
-  (member piece OPEN-COVER-PEG-SYMBOLS))
+(: get-board (-> Point Board Segment))
+(define (get-board point board) (list-ref board (2d->1d point)))
 
-(define (is-open-cover-peg-place? x y board type)
-  (and (is-peg? x y board)
-       (member type OPEN-COVER-SYMBOLS)
-       (is-same-color? (get-board x y board)
-                       type)))
+;MOVES
 
-(define (can-place-single? x0 y0 board x1 y1 type)
-  (let ([x (+ x0 x1)]
-       [y (+ y0 y1)])
-    (and (in-bounds? x y)
-         (or (is-empty? x y board)
-             (is-open-cover-peg-place? x y board type)))))
+(: relative-coord (-> Point Point Point))
+(define (relative-coord pt1 pt2)
+  (Point (+ (Point-row pt1)(Point-row pt2))
+         (+ (Point-col pt1)(Point-col pt2))))
 
-(define (can-place? location board piece)
-  (andmap (lambda (p)
-            (can-place-single? (first location)
-                               (second location)
-                               board
-                               (first p)
-                               (second p)
-                               (third p)))
-          piece))
+(: segment-coord (-> Point Segment Point))
+(define (segment-coord board-origin segment)
+  (relative-coord board-origin (Segment-point segment)))
 
+(: update-segment-coords (-> Point Segment Segment))
+(define (update-segment-coords board-origin segment)
+  (Segment (segment-coord board-origin segment)
+           (Segment-color segment)
+           (Segment-geom segment)))
 
-;move generator
+(: update-piece-coords (-> Point Piece Piece))
+(define (update-piece-coords coord piece)
+  (Piece (Piece-name piece) (map (lambda ([segment : Segment])
+                                   (update-segment-coords coord segment))
+                                 (Piece-segments piece))))
 
-(define EMPTY-STATE (list EMPTY-BOARD PIECE-LIST))
+(: is-peg? (-> Segment Boolean))
+(define (is-peg? segment)
+  (eqv? (Segment-geom segment) 'p))
 
-(define (make-coords x) (build-list COLS (lambda (i) (list x i))))
+(: is-open? (-> Segment Boolean))
+(define (is-open? segment)
+  (eqv? (Segment-geom segment) 'o))
 
-(define BOARD-COORDS (foldr append '() (build-list ROWS (lambda (i)(make-coords i)))))
+(: is-empty? (-> Segment Boolean))
+(define (is-empty? segment)
+   (eqv? (Segment-geom segment) 'e))
 
-(define (generate-location-moves board rotation sym)
-  (foldl (lambda (p result)
-           (cond
-             [(can-place? p board rotation) (cons (list sym p rotation) result)]
-             [else result]))
-         '()
-         BOARD-COORDS))
+(: is-same-color? (-> Segment Segment Boolean))
+(define (is-same-color? segment1 segment2)
+  (eqv? (Segment-color segment1)
+        (Segment-color segment2)))
 
-(define (generate-transformation-moves board piece)
-  (foldl (lambda (rotation result)
-           (append result (generate-location-moves board rotation (first piece))))
-         '()
-         (generate-all-transformations (rest piece))))
+(: is-open-and-peg? (-> Segment Segment Boolean))
+(define (is-open-and-peg? segment1 segment2)
+  (or (and (is-open? segment1) (is-peg? segment2))
+      (and (is-open? segment2) (is-peg? segment1))))
 
-(define (generate-all-moves state)
-  (foldl (lambda (piece result)
-           (append result (generate-transformation-moves (first state) piece)))
-         '()
-         (second state)))
+(: can-cover-peg? (-> Segment Segment Boolean))
+(define (can-cover-peg? segment1 segment2)
+  (and (is-open-and-peg? segment1 segment2)
+       (is-same-color? segment1 segment2)))
 
-(define (is-move-covering-peg? board move)
-  (let ([peg-covers (filter is-open-cover-peg? (flatten board))]
-        [next-board (place-multi-piece board (first move) (second move))])
-    (let ([new-covers (filter is-open-cover-peg? (flatten next-board))])
-      (> (length new-covers) (length peg-covers)))))
+;place-which generates new segment to be placed
+(: place-which? (-> Segment Segment Segment))
+(define (place-which? board-segment piece-segment)
+  (if (is-open-and-peg? board-segment piece-segment)
+      (Segment (Segment-point board-segment)
+               (Segment-color piece-segment)
+               'c)
+      (Segment (Segment-point board-segment)
+               (Segment-color piece-segment)
+               (Segment-geom piece-segment))))
 
-;pieces
-(define (single-piece-flip-horizontal piece) (list (- (first piece)) (second piece) (third piece)))
-(define (multi-piece-flip-horizontal piece) (map single-piece-flip-horizontal piece))
-(define (single-piece-rotate-right piece) (list (second piece) (- (first piece)) (third piece)))
-(define (multi-piece-rotate-right piece) (map single-piece-rotate-right piece))
+(: update-board-segment (-> Segment Piece Segment))
+(define (update-board-segment board-segment piece)
+  (let ([fsegs : (Listof Segment) (filter (lambda ([piece-segment : Segment]) (point-eqv? (Segment-point piece-segment)
+                                                                                          (Segment-point board-segment)))
+                       (Piece-segments piece))])
+    (if (empty? fsegs)
+        board-segment
+        (place-which? board-segment (first fsegs)))))
 
-(define (flip piece) (multi-piece-flip-horizontal piece))
-(define (rotate piece) (multi-piece-rotate-right piece))
+(: place-piece (-> Board Piece Board)) 
+(define (place-piece board bpiece)
+  (map (lambda ([board-segment : Segment])
+         (update-board-segment board-segment
+                               bpiece))
+       board))
 
-(define (rotate-90 piece) (rotate piece))
-(define (rotate-180 piece) (rotate (rotate-90 piece)))
-(define (rotate-270 piece) (rotate (rotate-180 piece)))
+(: can-place-piece? (-> Board Piece Boolean))
+(define (can-place-piece? board bpiece)
+  (andmap (lambda ([segment : Segment])
+            (and (in-bounds? (Segment-point segment))
+                 (let ([board-segment : Segment (get-board (Segment-point segment) board)])
+                   (or (is-empty? board-segment)
+                       (can-cover-peg? board-segment
+                                       segment)))))
+          (Piece-segments bpiece)))
 
-(define (generate-rotations piece)
-  (list piece (rotate-90 piece)(rotate-180 piece)(rotate-270 piece)))
+(: generate-all-moves (-> Board (Listof Piece) (Listof Piece)))
+(define (generate-all-moves board pieces)
+  (foldl (lambda ([piece : Piece][res : (Listof Piece)])
+           (append res
+                   (foldl (lambda ([board-segment : Segment][res2 : (Listof Piece)])
+                            (let ([bpiece : Piece (update-piece-coords (Segment-point board-segment) piece)])
+                              (if (can-place-piece? board bpiece)
+                                  (cons bpiece res2)
+                                  res2)))
+                          '()
+                          board)))
+           '()
+           pieces))
 
-(define (generate-all-transformations piece)
-  (set->list(list->set(let ([ipiece (flip piece)])
-    (append (generate-rotations piece) (generate-rotations ipiece))))))
+(: moves (Listof Piece))
+(define moves (generate-all-moves EMPTY-BOARD (generate-transformations PIECE-LIST)))
 
-
-;AI
-;; nodes/states are (board 
-(define (prune-non-peg-covering-edges node edges)
-  (let ([pruned-edges (filter (lambda (mv)
-                                (is-move-covering-peg? (first node) (rest mv)))
-                              edges)])
-    (if (empty? pruned-edges)
-        edges
-        pruned-edges)))
-
-(define (explore-node state) (set->list (list->set (generate-all-moves state))))
+(: explore-node (-> State (Listof Piece)))
+(define (explore-node state) (f)
 
 (define (traverse-edge state move)
   (list (place-multi-piece (first state) (first (rest move)) (second (rest move))) (remove (first move) (second state))))
