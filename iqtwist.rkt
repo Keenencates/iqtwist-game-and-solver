@@ -2,7 +2,7 @@
 
 ;(require rackunit)
 (require profile)
-;(require "gui-iqtwist.rkt")
+(provide 
 
 ;TODO -- add unit testing
 ;     -- move generation
@@ -14,6 +14,14 @@
 (struct Segment ([point : Point] [color : Symbol] [geom : Symbol]) #:transparent)
 (define-type Board (Listof Segment))
 (struct Piece ([name : Symbol] [segments : (Listof Segment)]) #:transparent)
+
+(: equal-piece? (-> Piece Piece Boolean))
+(define (equal-piece? p1 p2)
+  (let ([pts1 : (Listof Point) (map (lambda ([segment : Segment])(Segment-point segment)) (Piece-segments p1))]
+        [pts2 : (Listof Point) (map (lambda ([segment : Segment])(Segment-point segment)) (Piece-segments p2))])
+    (and (equal? (Piece-name p1) (Piece-name p2))
+         (andmap (lambda ([pt : Point]) (cond ((member pt pts2) #t) (else #f))) pts1))))
+
 (struct State ([board : Board] [piece-list : (Listof Piece)][place-pieces : (Listof Symbol)]) #:transparent)
 
 (: make-point (-> (Listof Integer) Point))
@@ -177,16 +185,20 @@
 (define (segment-coord board-origin segment)
   (relative-coord board-origin (Segment-point segment)))
 
-(: update-segment-coords (-> Point Segment Segment))
-(define (update-segment-coords board-origin segment)
+(: update-segment-coords (-> Point Segment Board Segment))
+(define (update-segment-coords board-origin segment board)
   (Segment (segment-coord board-origin segment)
            (Segment-color segment)
-           (Segment-geom segment)))
+           (if (in-bounds? (segment-coord board-origin segment))
+               (if (not (is-peg? (get-board (segment-coord board-origin segment) board)))
+                   's
+                   (Segment-geom segment))
+               's)))
 
-(: update-piece-coords (-> Point Piece Piece))
-(define (update-piece-coords coord piece)
+(: update-piece-coords (-> Point Piece Board Piece))
+(define (update-piece-coords coord piece board)
   (Piece (Piece-name piece) (map (lambda ([segment : Segment])
-                                   (update-segment-coords coord segment))
+                                   (update-segment-coords coord segment board))
                                  (Piece-segments piece))))
 
 (: is-peg? (-> Segment Boolean))
@@ -258,7 +270,7 @@
   (foldl (lambda ([piece : Piece][res : (Listof Piece)])
            (append res
                    (foldl (lambda ([board-segment : Segment][res2 : (Listof Piece)])
-                            (let ([bpiece : Piece (update-piece-coords (Segment-point board-segment) piece)])
+                            (let ([bpiece : Piece (update-piece-coords (Segment-point board-segment) piece board)])
                               (if (can-place-piece? board bpiece)
                                   (cons bpiece res2)
                                   res2)))
@@ -270,38 +282,24 @@
 (: moves (Listof Piece))
 (define moves (generate-all-moves EMPTY-BOARD (generate-transformations PIECE-LIST)))
 
-(: explore-node (-> State (Listof Piece)))
-(define (explore-node state) (f)
+(: segment-to-string (-> Segment String))
+(define (segment-to-string segment)
+  (string-append (symbol->string (Segment-color segment))
+                 (symbol->string (Segment-geom segment))))
 
-(define (traverse-edge state move)
-  (list (place-multi-piece (first state) (first (rest move)) (second (rest move))) (remove (first move) (second state))))
+(: get-row-n (-> Board Integer (Listof String)))
+(define (get-row-n board n)
+  (map (lambda ([segment : Segment])
+         (segment-to-string segment))
+       (filter
+        (lambda ([segment : Segment])
+          (equal? (Point-row (Segment-point segment)) n))
+        board)))
 
-(define (expand-node state)
-  (map (lambda (mv) (traverse-edge state mv)) (explore-node state)))
-
-(define (pruned-explore-node state)
-  (prune-non-peg-covering-edges state (explore-node state)))
-
-(define (pruned-expand-node state)
-  (map (lambda (mv) (delay (traverse-edge state mv))) (pruned-explore-node state)))
-
-(define (DFS root-state)
-  (DFS-helper (list root-state)))
-
-(define (DFS-helper frontier)
-  (let ([node (if (not (empty? frontier))
-                  (force (first frontier))
-                  '())])
-    (cond
-      [(empty? node) '()]
-      [(empty? (second node)) (first )]
-      [else (DFS-helper (append (pruned-expand-node node) (rest frontier)))])))
-
-(define tb1 (list (list "e" "e" "e" "e" "e" "e" "e" "e")
-                  (list "e" "e" "yp" "e" "e" "bp" "e" "e")
-                  (list "e" "e" "e" "e" "e" "e" "e" "e")
-                  (list "e" "e" "gp" "e" "e" "rp" "e" "e")))
-    
-;(define ts1 (list tb1 PIECE-LIST))
-;(define soln (DFS ts1))
-;(display soln)
+(: board-to-string (-> Board (Listof (Listof String))))
+(define (board-to-string board)
+  (list
+   (get-row-n board 0)
+   (get-row-n board 1)
+   (get-row-n board 2)
+   (get-row-n board 3)))

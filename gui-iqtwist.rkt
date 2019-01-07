@@ -52,7 +52,7 @@
 (define EMPTY-CELL-BOARD-ROW (apply beside (build-list COLS (const EMPTY-CELL))))
 (define EMPTY-CELL-BOARD (apply above (build-list ROWS (const EMPTY-CELL-BOARD-ROW))))
 
-(define CELL-TABLE (hash "e" EMPTY-CELL
+(define CELL-TABLE (hash "ee" EMPTY-CELL
                          "rp" (make-peg-cell "red")
                          "gp" (make-peg-cell "green")
                          "bp" (make-peg-cell "blue")
@@ -79,4 +79,4 @@
 (define (make-cell-board board)
   (apply above (map make-cell-board-row board)))
 
-(define (draw-handler state) (make-cell-board state))
+(define (draw-handler board) (make-cell-board board))
